@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Turn Order">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#14111c">
+<title>Aeon's End Turn Order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: quiet, arcane, a game tool you use one-handed at the table
+   IDEA: the turn order deck itself, one card face-up after each draw
+   PICTURE: a large turn order card that flips on each draw
+   COLOUR and TYPE: night violet ground, card colour per turn type; Cinzel names, Inter for UI
+   LAYOUT: one column: card, deck status, controls, then deck setup */
+:root{color-scheme:dark;--bg:#14111c;--panel:#1d1928;--line:#342d47;--ink:#efeaf7;--mute:#a69dba;--acc:#a083ff}
+:root[data-theme=light],:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:radial-gradient(120% 60% at 50% 0%,#2a2140 0%,var(--bg) 60%) fixed,var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,-apple-system,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 14px) max(16px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 36px) max(16px,env(safe-area-inset-left))}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px}
+h1{font:700 22px/1.1 Cinzel,serif;margin:0;letter-spacing:.02em}
+.round{color:var(--mute);font-size:14px;white-space:nowrap}
+.stage{display:grid;place-items:center;perspective:900px}
+.card{width:min(80vw,320px,calc(52vh * .714));aspect-ratio:5/7;border:0;padding:0;border-radius:20px;cursor:pointer;background:none;color:inherit;font:inherit;display:block}
+.card:focus-visible{outline:3px solid var(--acc);outline-offset:4px}
+.face{width:100%;height:100%;border-radius:20px;display:grid;grid-template-rows:auto 1fr auto;padding:18px;text-align:center;position:relative;overflow:hidden;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--c) 92%,#fff) 0%,var(--c) 45%,color-mix(in srgb,var(--c) 55%,#000) 100%);
+  box-shadow:0 18px 40px -12px color-mix(in srgb,var(--c) 60%,#000),inset 0 0 0 2px rgba(255,255,255,.18),inset 0 0 0 9px rgba(0,0,0,.12)}
+.face::after{content:"";position:absolute;inset:9px;border-radius:13px;border:1px solid rgba(255,255,255,.35);pointer-events:none}
+.kind{font-size:13px;font-weight:600;color:rgba(255,255,255,.85)}
+.name{align-self:center;font:700 clamp(28px,9vw,38px)/1.08 Cinzel,serif;color:#fff;text-wrap:balance;text-shadow:0 2px 10px rgba(0,0,0,.35);overflow-wrap:anywhere}
+.foot{font-size:13px;color:rgba(255,255,255,.8)}
+.back{--c:#3b2f5c;background:repeating-conic-gradient(from 45deg,#3a2d5a 0 25%,#2f2549 0 50%) 0 0/28px 28px;box-shadow:0 18px 40px -12px #000,inset 0 0 0 2px rgba(255,255,255,.12)}
+.back .name{font-size:26px;color:var(--ink)}
+.flip{animation:flip .28s ease-out}
+@keyframes flip{from{transform:rotateY(80deg) scale(.96);opacity:.4}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.flip{animation:none}}
+.k-nemesis{--c:#b8232c}.k-p1{--c:#2b6fd1}.k-p2{--c:#c58d12}.k-friend{--c:#178a78}.k-foe{--c:#7b44c9}.k-custom{--c:#c44a1f}
+.note{margin:14px 0 0;text-align:center;font-size:14px;color:var(--mute);min-height:21px}
+.note b{color:var(--ink);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px;min-height:28px}
+.chip{background:var(--c);color:#fff;font-size:13px;padding:4px 10px;border-radius:99px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:16px}
+button{font:inherit;color:inherit}
+.btn{min-height:46px;border-radius:12px;border:1px solid var(--line);background:var(--panel);font-size:15px;font-weight:500;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.main{grid-column:1/-1;min-height:58px;font-size:18px;font-weight:600;background:var(--acc);border-color:transparent;color:#160f2a}
+.btn:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.banner{display:none;margin-top:12px;padding:10px 12px;border-radius:12px;background:#2c2340;border:1px solid #4a3d6b;font-size:14px;align-items:center;justify-content:space-between;gap:10px}
+.banner.on{display:flex}
+.banner button{flex:none;min-height:40px;padding:0 12px;border-radius:10px;border:0;background:var(--acc);color:#160f2a;font-weight:600;cursor:pointer}
+.panel{margin-top:28px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+h2{font:700 18px/1.2 Cinzel,serif;margin:0 0 12px}
+h3{font-size:14px;font-weight:600;color:var(--mute);margin:18px 0 8px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c);margin-right:8px;flex:none}
+.lbl{display:flex;align-items:center}
+.x{color:var(--mute);white-space:nowrap}
+.sub{display:block;font-size:13px;color:var(--mute)}
+.switch{appearance:none;-webkit-appearance:none;flex:none;width:52px;height:32px;border-radius:99px;background:#3a3350;position:relative;cursor:pointer;margin:0;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:transform .2s}
+.switch:checked{background:var(--acc)}.switch:checked::after{transform:translateX(20px)}
+.crow{display:grid;grid-template-columns:minmax(0,1fr) auto 40px;gap:8px;align-items:center;margin-bottom:8px}
+.cname{height:44px;border-radius:10px;border:1px solid var(--line);background:#15121d;color:var(--ink);font:16px Inter,sans-serif;padding:0 12px;width:100%}
+.step{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.step button{width:38px;height:42px;border:0;background:#15121d;font-size:20px;cursor:pointer}
+.cnt{width:28px;text-align:center;font-variant-numeric:tabular-nums}
+.rm{width:40px;height:44px;border-radius:10px;border:1px solid var(--line);background:none;font-size:20px;color:var(--mute);cursor:pointer}
+.empty{color:var(--mute);font-size:14px;margin:0 0 10px}
+.add{width:100%}
+.total{margin:14px 0 0;font-size:14px;color:var(--mute)}
+.total b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>Turn Order</h1><span class="round" id="round"></span></header>
+
+  <div class="stage"><button class="card" id="card" aria-live="polite" aria-label="Draw next turn card"></button></div>
+  <p class="note" id="note"></p>
+  <div class="chips" id="chips" aria-label="Drawn this round"></div>
+
+  <div class="controls">
+    <button class="btn main" id="draw">Draw card</button>
+    <button class="btn" id="undo">Undo</button>
+    <button class="btn" id="shuf">Reshuffle</button>
+    <button class="btn" id="newg">New game</button>
+  </div>
+  <div class="banner" id="banner"><span>Deck setup changed. It applies at the next reshuffle.</span><button id="applyNow">Reshuffle now</button></div>
+
+  <section class="panel">
+    <h2>Deck setup</h2>
+    <div class="row"><span class="lbl"><span class="dot k-nemesis"></span>Nemesis Turn</span><span class="x">× 2</span></div>
+    <div class="row"><span class="lbl"><span class="dot k-p1"></span>Player 1 Turn</span><span class="x">× 2</span></div>
+    <div class="row"><span class="lbl"><span class="dot k-p2"></span>Player 2 Turn</span><span class="x">× 2</span></div>
+
+    <h3>Add-ons</h3>
+    <label class="row" for="ff" style="border-top:0;cursor:pointer">
+      <span>Friends &amp; Foes<span class="sub">Adds Friend's Turn × 1 and Foe's Turn × 1</span></span>
+      <input type="checkbox" class="switch" id="ff">
+    </label>
+
+    <h3>Nemesis-specific cards</h3>
+    <div id="custom"></div>
+    <button class="btn add" id="addc">+ Add card</button>
+    <p class="total" id="total"></p>
+  </section>
+</div>
+
+<script>
+{
+const KEY='ae-turn-order-v1';
+const BASE=[['Nemesis Turn','nemesis',2],['Player 1 Turn','p1',2],['Player 2 Turn','p2',2]];
+const FF=[["Friend's Turn",'friend',1],["Foe's Turn",'foe',1]];
+const LABEL={nemesis:'Nemesis',p1:'Player 1',p2:'Player 2',friend:'Friends & Foes',foe:'Friends & Foes',custom:'Nemesis card'};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const list=s=>{const out=[];const add=(n,k,c)=>{for(let i=0;i<c;i++)out.push({n,k})};
+  BASE.forEach(b=>add(...b));if(s.ff)FF.forEach(b=>add(...b));
+  s.custom.forEach(c=>add(c.name.trim()||'Nemesis card','custom',c.count));return out};
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const build=s=>shuffle(list(s));
+const fresh=()=>{const s={ff:false,custom:[],drawn:[],round:1,last:null,hist:[],pending:false,reshuffled:false};s.deck=build(s);return s};
+const load=()=>{try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&Array.isArray(v.deck)&&Array.isArray(v.custom))return v}catch(e){}return null};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+let S=load()||fresh();
+
+const snap=()=>{S.hist.push(JSON.stringify({deck:S.deck,drawn:S.drawn,round:S.round,last:S.last,pending:S.pending,reshuffled:S.reshuffled}));if(S.hist.length>60)S.hist.shift()};
+
+function draw(){
+  snap();S.reshuffled=false;
+  if(!S.deck.length){S.deck=build(S);S.drawn=[];S.round++;S.pending=false;S.reshuffled=true}
+  const c=S.deck.pop();S.drawn.push(c);S.last=c;save();renderPlay(true);
+}
+function reshuffle(){
+  snap();if(S.drawn.length)S.round++;
+  S.deck=build(S);S.drawn=[];S.last=null;S.pending=false;S.reshuffled=false;save();renderPlay(true);
+}
+function newGame(){
+  snap();S.deck=build(S);S.drawn=[];S.last=null;S.round=1;S.pending=false;S.reshuffled=false;save();renderPlay(true);
+}
+function undo(){
+  if(!S.hist.length)return;Object.assign(S,JSON.parse(S.hist.pop()));save();renderPlay(true);
+}
+function cfgChanged(){
+  if(!S.drawn.length){S.deck=build(S);S.pending=false}else S.pending=true;
+  save();renderPlay(false);renderTotal();
+}
+
+function renderPlay(anim){
+  const total=S.drawn.length+S.deck.length;
+  $('round').textContent='Round '+S.round;
+  const card=$('card');
+  card.innerHTML=S.last
+    ?`<div class="face k-${S.last.k}"><span class="kind">${LABEL[S.last.k]}</span><span class="name">${esc(S.last.n)}</span><span class="foot">Card ${S.drawn.length} of ${total}</span></div>`
+    :`<div class="face back"><span class="kind">Turn order deck</span><span class="name">Tap to draw</span><span class="foot">${total} cards shuffled</span></div>`;
+  if(anim){const f=card.firstElementChild;f.classList.remove('flip');void f.offsetWidth;f.classList.add('flip')}
+  $('note').innerHTML=S.reshuffled?'<b>Deck reshuffled.</b> New round started.'
+    :S.deck.length?`<b>${S.deck.length}</b> left in the deck`:'Deck empty. The next draw reshuffles.';
+  $('chips').innerHTML=S.drawn.map(c=>`<span class="chip k-${c.k}">${esc(c.n)}</span>`).join('');
+  $('undo').disabled=!S.hist.length;
+  $('banner').classList.toggle('on',!!S.pending);
+}
+function renderTotal(){$('total').innerHTML=`Deck size: <b>${list(S).length}</b> cards`}
+function renderSetup(){
+  $('ff').checked=!!S.ff;
+  $('custom').innerHTML=S.custom.length?S.custom.map(c=>`<div class="crow" data-id="${c.id}">
+    <input class="cname" value="${esc(c.name)}" placeholder="Card name" aria-label="Card name" autocomplete="off">
+    <div class="step"><button data-a="dec" aria-label="Fewer copies">−</button><span class="cnt">${c.count}</span><button data-a="inc" aria-label="More copies">+</button></div>
+    <button class="rm" data-a="rm" aria-label="Remove card">×</button></div>`).join('')
+    :'<p class="empty">None added. Use this for nemesis effects that put extra cards into the turn order deck.</p>';
+  renderTotal();
+}
+
+$('card').addEventListener('click',draw);
+$('draw').addEventListener('click',draw);
+$('undo').addEventListener('click',undo);
+$('shuf').addEventListener('click',reshuffle);
+$('applyNow').addEventListener('click',reshuffle);
+$('newg').addEventListener('click',newGame);
+$('ff').addEventListener('change',e=>{S.ff=e.target.checked;cfgChanged()});
+$('addc').addEventListener('click',()=>{
+  S.custom.push({id:Date.now().toString(36),name:'',count:1});cfgChanged();renderSetup();
+  const ins=document.querySelectorAll('.cname');ins[ins.length-1].focus();
+});
+$('custom').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-a]');if(!b)return;
+  const id=b.closest('.crow').dataset.id;const c=S.custom.find(x=>x.id===id);if(!c)return;
+  if(b.dataset.a==='inc')c.count=Math.min(10,c.count+1);
+  else if(b.dataset.a==='dec')c.count=Math.max(1,c.count-1);
+  else S.custom=S.custom.filter(x=>x.id!==id);
+  cfgChanged();renderSetup();
+});
+$('custom').addEventListener('input',e=>{
+  if(!e.target.classList.contains('cname'))return;
+  const c=S.custom.find(x=>x.id===e.target.closest('.crow').dataset.id);if(!c)return;
+  c.name=e.target.value;cfgChanged();
+});
+
+renderPlay(false);renderSetup();
+}
+</script>
+</body>
+</html>
