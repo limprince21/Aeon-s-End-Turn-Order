@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AE Score">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#070a18">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>BG Apps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a ship's console at the end of a long game: calm, bright figures, quick to tap
+   IDEA: the station's end-of-game readout, one panel per progress track
+   PICTURE: the live score dial in the header over a planet's rim, then the track panels
+   COLOUR and TYPE: deep space navy, nebula violet, each track in its own signal colour; Exo 2 figures, Inter text
+   LAYOUT: one column: player tabs, score header, track panels, other scoring, sticky total bar; results view ranks everyone */
+:root{color-scheme:dark;--bg:#070a18;--panel:rgba(20,26,52,.78);--line:rgba(140,160,255,.16);--ink:#eef1ff;--mute:#9aa3c7;--acc:#8f7bff;--acc2:#4fd1ff;
+  --sci:#4fb3ff;--ind:#ff8a3d;--sup:#ff4d6d;--com:#ffc94d;--civ:#5fe0a0;--oth:#b9a6ff;--exp:#ff8fd8}
+:root[data-theme=light],:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;color:var(--ink);font:16px/1.5 Inter,system-ui,-apple-system,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent;
+  background:
+   radial-gradient(1px 1px at 20px 30px,#fff 50%,transparent 51%) 0 0/120px 110px,
+   radial-gradient(1px 1px at 70px 80px,rgba(255,255,255,.7) 50%,transparent 51%) 0 0/150px 140px,
+   radial-gradient(1.5px 1.5px at 100px 20px,rgba(190,210,255,.9) 50%,transparent 51%) 0 0/230px 210px,
+   radial-gradient(60% 40% at 85% 8%,rgba(143,123,255,.35),transparent 70%),
+   radial-gradient(50% 35% at 0% 45%,rgba(79,209,255,.16),transparent 70%),
+   radial-gradient(70% 40% at 60% 100%,rgba(255,77,109,.12),transparent 70%),var(--bg);
+  background-attachment:fixed}
+.wrap{max-width:620px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 12px) max(14px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 110px) max(14px,env(safe-area-inset-left))}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.brand{font:800 15px/1.2 "Exo 2",sans-serif;color:var(--mute)}
+.brand b{color:var(--ink)}
+.ghost{min-height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:rgba(10,14,32,.6);color:var(--mute);font:500 14px Inter,sans-serif;cursor:pointer}
+.tabs{display:flex;gap:8px;overflow-x:auto;margin:12px -14px 0;padding:2px 14px 6px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;min-height:44px;padding:6px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(10,14,32,.6);color:var(--mute);font:500 14px Inter,sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
+.tab b{font:700 16px "Exo 2",sans-serif;color:var(--ink)}
+.tb{display:flex;gap:8px;flex:none}
+.peek{margin-top:12px;min-height:44px;padding:0 18px;border-radius:12px;border:1px solid rgba(255,255,255,.3);background:rgba(8,10,28,.55);color:var(--ink);font:600 15px Inter,sans-serif;cursor:pointer;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.masked{letter-spacing:.08em;color:rgba(238,241,255,.35);text-shadow:none}
+.hs .mix,.hs .legend{display:none}
+.tab.on{border-color:var(--acc);background:linear-gradient(160deg,rgba(143,123,255,.35),rgba(79,209,255,.12));color:var(--ink)}
+.tab.add{align-items:center;justify-content:center;font-size:22px;width:46px;padding:0}
+.hero{position:relative;margin-top:12px;border-radius:20px;overflow:hidden;border:1px solid var(--line);padding:18px 18px 22px;
+  background:radial-gradient(120% 90% at 50% 150%,#3b2d8c 0%,#1a1745 38%,rgba(10,12,30,.9) 62%)}
+.hero::before{content:"";position:absolute;left:-15%;right:-15%;bottom:-150%;height:190%;border-radius:50%;
+  background:radial-gradient(circle at 50% 30%,#5b8cff 0%,#3a2f9e 30%,#140f3a 60%);box-shadow:0 -6px 30px rgba(79,209,255,.55),inset 0 10px 30px rgba(180,220,255,.35);opacity:.85}
+.hero>*{position:relative}
+.pname{display:flex;align-items:center;gap:8px}
+.pname input{flex:1;background:transparent;border:0;border-bottom:1px dashed rgba(255,255,255,.25);color:var(--ink);font:700 22px "Exo 2",sans-serif;padding:4px 0;outline:none}
+.pname input:focus{border-bottom-color:var(--acc2)}
+.big{font:800 clamp(56px,17vw,84px)/1 "Exo 2",sans-serif;margin-top:6px;text-shadow:0 0 28px rgba(79,209,255,.45);font-variant-numeric:tabular-nums}
+.big small{font:500 16px Inter,sans-serif;color:var(--mute);margin-left:6px;text-shadow:none}
+.mix{display:flex;height:8px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.08);margin-top:12px}
+.mix span{height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:13px;color:var(--mute)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
+.card{margin-top:12px;background:var(--panel);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--line);border-left:3px solid var(--c);border-radius:16px;padding:12px 14px 6px}
+.ch{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+.ch h2{margin:0;font:700 18px "Exo 2",sans-serif;color:var(--c)}
+.ch .sub{font:700 20px "Exo 2",sans-serif;font-variant-numeric:tabular-nums}
+.f{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.f:first-of-type{border-top:0}
+.lab{font-size:15px}
+.lab span{display:block;font-size:13px;color:var(--mute)}
+.step{display:flex;align-items:center;flex:none;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:rgba(5,8,20,.6)}
+.step button{width:44px;height:44px;border:0;background:none;color:var(--ink);font-size:22px;cursor:pointer}
+.step button:active{background:rgba(255,255,255,.08)}
+.step input{width:52px;height:44px;border:0;background:none;color:var(--ink);text-align:center;font:700 18px "Exo 2",sans-serif;-moz-appearance:textfield}
+.step input::-webkit-outer-spin-button,.step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.seg{display:flex;flex:none;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:rgba(5,8,20,.6)}
+.seg button{min-width:44px;height:40px;padding:0 8px;border:0;border-left:1px solid var(--line);background:none;color:var(--mute);font:600 14px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--c);color:#0a0d1c}
+.auto{font-size:12px;color:var(--acc2)}
+.lvl{flex:none;min-width:96px;padding:4px 12px;border-radius:12px;background:color-mix(in srgb,var(--c) 18%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent);text-align:center;line-height:1.15}
+.lvl b{display:block;font:800 22px "Exo 2",sans-serif;color:var(--c)}
+.lvl span{font-size:12px;color:var(--mute)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+.toggle{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:var(--panel);cursor:pointer}
+.sw{appearance:none;-webkit-appearance:none;flex:none;width:52px;height:32px;border-radius:99px;background:#2a2f52;position:relative;margin:0;cursor:pointer}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:transform .2s}
+.sw:checked{background:var(--acc)}.sw:checked::after{transform:translateX(20px)}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:10px max(14px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 10px) max(14px,env(safe-area-inset-left));background:linear-gradient(to top,rgba(7,10,24,.98) 60%,rgba(7,10,24,0));z-index:5}
+.bar .in{max-width:620px;margin:0 auto;display:flex;gap:10px}
+.main{flex:1;min-height:54px;border:0;border-radius:14px;background:linear-gradient(120deg,var(--acc),var(--acc2));color:#08091a;font:800 17px "Exo 2",sans-serif;cursor:pointer;box-shadow:0 8px 28px -8px rgba(143,123,255,.8)}
+.sec{flex:1;min-height:54px;padding:0 16px;border-radius:14px;border:1px solid var(--line);background:rgba(15,20,44,.9);color:var(--ink);font:600 15px Inter,sans-serif;cursor:pointer}
+.hide{display:none!important}
+h1{font:800 30px/1.1 "Exo 2",sans-serif;margin:16px 0 4px}
+.lead{color:var(--mute);margin:0 0 8px;font-size:15px}
+.rank{margin-top:12px;border-radius:18px;border:1px solid var(--line);background:var(--panel);padding:14px;position:relative;overflow:hidden}
+.rank.first{border-color:rgba(255,201,77,.6);background:linear-gradient(150deg,rgba(255,201,77,.18),var(--panel) 55%)}
+.rrow{display:flex;align-items:center;gap:12px}
+.pos{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:800 18px "Exo 2",sans-serif;background:rgba(255,255,255,.08)}
+.first .pos{background:var(--com);color:#1a1200;box-shadow:0 0 18px rgba(255,201,77,.6)}
+.who{flex:1;font:700 18px "Exo 2",sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pts{font:800 28px "Exo 2",sans-serif;font-variant-numeric:tabular-nums}
+.rank .mix{margin-top:10px}
+details{margin-top:8px}
+summary{cursor:pointer;color:var(--mute);font-size:14px;min-height:32px;display:flex;align-items:center}
+.bd{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;font-size:14px;padding:4px 0 2px}
+.bd span:nth-child(even){text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.tie{margin-top:12px;font-size:14px;color:var(--mute);padding:10px 12px;border-radius:12px;border:1px dashed var(--line)}
+.del{margin-top:16px;width:100%}
+.orbit{position:relative;height:180px;margin:10px 0 4px}
+.planet{position:absolute;left:50%;top:50%;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#9fd4ff 0%,#5b6cff 35%,#2a1d7a 70%,#120c38 100%);box-shadow:0 0 40px rgba(91,140,255,.55),inset -14px -10px 26px rgba(0,0,0,.45)}
+.ring{position:absolute;left:50%;top:50%;width:230px;height:62px;margin:-31px 0 0 -115px;border-radius:50%;border:3px solid rgba(255,201,77,.75);transform:rotate(-14deg);box-shadow:0 0 18px rgba(255,201,77,.35)}
+.moon{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px;border-radius:50%;background:#ffd9e2;box-shadow:0 0 12px #ff8fd8;animation:orb 9s linear infinite}
+@keyframes orb{from{transform:rotate(0) translateX(120px) rotate(0)}to{transform:rotate(360deg) translateX(120px) rotate(-360deg)}}
+@media(prefers-reduced-motion:reduce){.moon{animation:none;transform:translateX(120px)}}
+body.home{background:
+   radial-gradient(1px 1px at 20px 30px,#fff 50%,transparent 51%) 0 0/120px 110px,
+   radial-gradient(1.5px 1.5px at 100px 20px,rgba(190,240,255,.9) 50%,transparent 51%) 0 0/230px 210px,
+   radial-gradient(70% 45% at 50% 30%,rgba(94,190,200,.22),transparent 70%),
+   radial-gradient(60% 40% at 100% 90%,rgba(60,140,120,.2),transparent 70%),#061420;background-attachment:fixed}
+.cover{position:relative;width:100vw;margin-left:calc(50% - 50vw);margin-top:calc(-1 * (env(safe-area-inset-top) + 12px))}
+.cover img{display:block;width:100%;height:clamp(240px,62vw,440px);object-fit:cover;object-position:50% 35%}
+.cover img{-webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent 100%);mask-image:linear-gradient(to bottom,#000 55%,transparent 100%)}
+.cover+h1{margin-top:-18px;position:relative}
+.home h1{text-shadow:0 0 24px rgba(127,227,224,.55);margin-top:4px}
+.home .lead{color:#9cc7cc}
+.home .mode{position:relative;overflow:hidden;background:linear-gradient(160deg,rgba(94,230,224,.22),rgba(6,20,32,.9) 70%);border-color:rgba(127,227,224,.35);box-shadow:0 12px 30px -14px rgba(94,230,224,.6)}
+.home .mode::before{content:"";position:absolute;top:-30%;right:-20%;width:140%;height:2px;background:linear-gradient(90deg,transparent,rgba(220,255,255,.9),transparent);transform:rotate(-24deg);opacity:.55}
+.home .mode.unity{background:linear-gradient(160deg,rgba(255,77,109,.24),rgba(6,20,32,.9) 70%);border-color:rgba(255,120,150,.35);box-shadow:0 12px 30px -14px rgba(255,77,109,.55)}
+.home .mode span{color:#a9c9cf}
+.home .counts button{background:rgba(8,30,44,.85);border-color:rgba(127,227,224,.3)}
+.home .counts button:active,.home .mode:active{border-color:#9ff3ee}
+.home .cont{background:rgba(8,30,44,.85);border-color:rgba(127,227,224,.3)}
+.modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mode{min-height:120px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(160deg,rgba(143,123,255,.32),rgba(20,26,52,.85));color:var(--ink);cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;padding:16px;text-align:left}
+.mode b{font:800 22px "Exo 2",sans-serif}
+.mode span{font-size:14px;color:var(--mute)}
+.mode.unity{background:linear-gradient(160deg,rgba(255,77,109,.32),rgba(20,26,52,.85))}
+.counts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.counts button{min-height:64px;border-radius:16px;border:1px solid var(--line);background:rgba(15,20,44,.9);color:var(--ink);font:800 26px "Exo 2",sans-serif;cursor:pointer}
+.counts button:active,.mode:active{border-color:var(--acc2)}
+.cont{width:100%;margin-top:24px}
+.utab.on{border-color:var(--sup);background:linear-gradient(160deg,rgba(255,77,109,.35),rgba(255,77,109,.08))}
+.hero.unity{background:radial-gradient(120% 90% at 50% 150%,#8c2d4a 0%,#45173a 38%,rgba(10,12,30,.9) 62%)}
+.hero.unity::before{background:radial-gradient(circle at 50% 30%,#ff7a8c 0%,#9e2f5a 30%,#3a0f24 60%);box-shadow:0 -6px 30px rgba(255,77,109,.55),inset 0 10px 30px rgba(255,200,210,.3)}
+.urank .pos{box-shadow:inset 0 0 0 2px var(--sup)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top" id="topBar"><span class="brand"><b>Andromeda's Edge</b> · Final scoring</span><span class="tb" id="topBtns"><button class="ghost" id="stand">Standings</button><button class="ghost" id="reset">New game</button></span></div>
+
+  <div id="setup" class="hide">
+    <div class="cover"><img src="cover.jpg" alt="Andromeda's Edge"></div>
+    <h1>New game</h1>
+    <p class="lead">Who's playing?</p>
+    <div class="modes">
+      <button class="mode" data-mode="multi"><b>Multiplayer</b><span>2 to 5 players</span></button>
+      <button class="mode unity" data-mode="solo"><b>Solo</b><span>You against Unity</span></button>
+    </div>
+    <div id="countPick" class="hide">
+      <p class="lead" style="margin-top:20px">How many players?</p>
+      <div class="counts"><button data-n="2">2</button><button data-n="3">3</button><button data-n="4">4</button><button data-n="5">5</button></div>
+    </div>
+    <button class="sec cont hide" id="cont">Continue last game</button>
+  </div>
+
+  <div id="score" class="hide">
+    <div class="tabs" id="tabs"></div>
+    <section class="hero">
+      <div class="pname"><input id="name" aria-label="Player name" maxlength="24" autocomplete="off"></div>
+      <div class="big"><span id="total">0</span><small>VP</small></div>
+      <button class="peek" id="peek" aria-pressed="false">Show score</button>
+      <div class="mix" id="mix"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+    <div id="form"></div>
+    <label class="toggle" for="expOn"><span>Expansion scoring<span style="display:block;color:var(--mute);font-size:13px" id="expSub"></span></span><input type="checkbox" class="sw" id="expOn"></label>
+    <button class="ghost del" id="delP">Remove this player</button>
+  </div>
+
+  <div id="results" class="hide">
+    <h1 id="rtitle">Final standings</h1>
+    <p class="lead" id="rlead"></p>
+    <div id="ranks"></div>
+  </div>
+</div>
+
+<div class="bar" id="bar"><div class="in">
+  <button class="sec hide" id="back">Edit scores</button>
+  <button class="main" id="go">See final standings</button>
+</div></div>
+
+<script>
+{
+const KEY='ae-score-v2';
+const DEV=[0,5,7,10];
+const TRACKS=[
+  {id:'sci',name:'Science',bld:'Observatories',one:'observatory'},
+  {id:'ind',name:'Industry',bld:'Factories',one:'factory'},
+  {id:'sup',name:'Supremacy',bld:'Obelisks',one:'obelisk'},
+  {id:'com',name:'Commerce',bld:'Space ports',one:'space port'},
+  {id:'civ',name:'Civilization',bld:'Cities',one:'city'}];
+const RELIC=[0,2,5,9,14,20];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const lvlOf=(id,vp)=>vp>=20?3:vp>=10?2:vp>=(id==='sup'?4:6)?1:0;
+const vaultOf=vp=>vp>=14?2:vp>=9?1:0;
+const isU=p=>p.kind==='unity';
+const qv=p=>(p.quasar||0)*2+(p.vortex||0)*4;
+
+const newPlayer=(name,kind='player')=>({name,kind,
+  t:Object.fromEntries(TRACKS.map(t=>[t.id,{vp:0,n:0}])),
+  res:0,civEnd:0,vpTrack:0,damaged:0,leaders:0,destiny:0,faction:0,
+  moons:0,disc:0,supTok:0,quasar:0,vortex:0,relics:0,shrines:0,corrupted:0,restored:0});
+let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!Array.isArray(S.players))S={mode:null,cur:0,exp:false,players:[]};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+let show=false,view='setup';
+
+function score(p){
+  const r={};
+  TRACKS.forEach(t=>{const x=p.t[t.id];r[t.id]=x.vp+x.n*DEV[lvlOf(t.id,x.vp)]});
+  r.com+=Math.min(p.res,isU(p)?15:999)*vaultOf(p.t.com.vp);
+  if(!isU(p))r.civ+=p.civEnd;
+  r.oth=p.vpTrack-2*p.damaged+p.leaders+p.destiny+(isU(p)?p.moons*2+(p.disc+p.supTok)*3+qv(p):p.faction);
+  r.exp=S.exp?RELIC[Math.min(p.relics,5)]+(isU(p)?0:p.shrines-p.corrupted+p.restored+qv(p)):0;
+  r.total=Object.values(r).reduce((a,b)=>a+b,0);
+  return r;
+}
+const PARTS=[['sci','Science'],['ind','Industry'],['sup','Supremacy'],['com','Commerce'],['civ','Civilization'],['oth','VP track & other'],['exp','Expansions']];
+const mixHTML=r=>{const pos=PARTS.filter(([k])=>r[k]>0);const sum=pos.reduce((a,[k])=>a+r[k],0)||1;
+  return pos.map(([k])=>`<span style="width:${r[k]/sum*100}%;background:var(--${k})"></span>`).join('')};
+
+const stepper=(path,val,min,label,max)=>`<div class="step"><button data-d="-1" data-p="${path}" aria-label="Decrease ${label}">−</button><input type="number" inputmode="numeric" data-p="${path}" value="${val}" min="${min}" max="${max}" aria-label="${label}"><button data-d="1" data-p="${path}" aria-label="Increase ${label}">+</button></div>`;
+const field=(label,sub,path,val,min=0,max=999)=>`<div class="f"><span class="lab">${label}${sub?`<span>${sub}</span>`:''}</span>${stepper(path,val,min,label,max)}</div>`;
+const box=(label,sub,id)=>`<div class="f"><span class="lab">${label}<span>${sub}</span></span><span class="lvl" id="${id}"></span></div>`;
+
+function renderForm(){
+  const p=S.players[S.cur],u=isU(p);
+  $('name').value=p.name;
+  let h=TRACKS.map(t=>{const x=p.t[t.id];
+    let extra='';
+    if(t.id==='com')extra=field(u?'Tactics cards':'Unspent resources',u?'Counts up to 15':'Incl. tactics cards','res',p.res,0,u?15:999)+
+      box('VP per '+(u?'card':'resource'),'1 each at 9 · 2 each at 14','v-com');
+    if(t.id==='civ'&&!u)extra=field('Civ module VP','Game-end VP on undamaged modules','civEnd',p.civEnd);
+    return `<section class="card" style="--c:var(--${t.id})"><div class="ch"><h2>${t.name}</h2><span class="sub" id="s-${t.id}">0</span></div>
+      ${field('Track VP','VP printed by the marker (max 20)','t.'+t.id+'.vp',x.vp,0,20)}
+      ${field(t.bld,'Developments built','t.'+t.id+'.n',x.n)}
+      ${box('VP per '+t.one,t.id==='sup'?'Level 1 at 4 · 2 at 10 · 3 at 20':'Level 1 at 6 · 2 at 10 · 3 at 20','l-'+t.id)}
+      ${extra}</section>`}).join('');
+  h+=`<section class="card" style="--c:var(--oth)"><div class="ch"><h2>VP track &amp; other</h2><span class="sub" id="s-oth">0</span></div>
+    ${field('VP track score','Points scored during the game','vpTrack',p.vpTrack)}
+    ${field('Leaders','+1 each left on the station','leaders',p.leaders)}
+    ${field('Damaged modules','−2 each','damaged',p.damaged)}
+    ${field('Destiny cards',u?'VP from the better of its 2 cards':'VP from goals met','destiny',p.destiny)}
+    ${u?field('Moon tokens','+2 each','moons',p.moons)+field('Discovery tokens','+3 each','disc',p.disc)+field('Supremacy tokens','+3 each','supTok',p.supTok)+field('Developments by quasars','+2 each adjacent','quasar',p.quasar)+field('Developments by vortexes','+4 each adjacent','vortex',p.vortex)
+       :field('Faction & other VP','Anything else that scores','faction',p.faction,-99)}</section>`;
+  if(S.exp)h+=`<section class="card" style="--c:var(--exp)"><div class="ch"><h2>Expansions</h2><span class="sub" id="s-exp">0</span></div>
+    ${field('Relics','1→2 · 2→5 · 3→9 · 4→14 · 5+→20','relics',p.relics)}
+    ${u?'':field('Shrines','+1 each','shrines',p.shrines)+field('Corrupted stars','−1 each','corrupted',p.corrupted)+field('Restored stars','+1 each','restored',p.restored)+field('Developments by quasars','+2 each adjacent','quasar',p.quasar)+field('Developments by vortexes','+4 each adjacent','vortex',p.vortex)}</section>`;
+  $('form').innerHTML=h;
+  $('expOn').checked=S.exp;
+  $('expSub').textContent=u?'Relics':'Relics, shrines, stars, quasars and vortexes';
+  $('delP').classList.toggle('hide',S.mode!=='multi'||S.players.length<=2);
+  document.querySelector('.hero').classList.toggle('unity',u);
+  renderNums();
+}
+function renderNums(){
+  const p=S.players[S.cur],r=score(p);
+  $('total').textContent=show?r.total:'???';$('total').classList.toggle('masked',!show);
+  document.querySelector('.hero').classList.toggle('hs',!show);
+  $('peek').textContent=show?'Hide score':'Show score';$('peek').setAttribute('aria-pressed',show);
+  PARTS.forEach(([k])=>{const el=$('s-'+k);if(el)el.textContent=show?r[k]:'•••'});
+  TRACKS.forEach(t=>{const el=$('l-'+t.id);if(!el)return;const l=lvlOf(t.id,p.t[t.id].vp);el.innerHTML=l?`<b>${DEV[l]}</b><span>Level ${l}</span>`:'<b>0</b><span>Not reached</span>'});
+  const v=vaultOf(p.t.com.vp),vb=$('v-com');if(vb)vb.innerHTML=`<b>${v}</b><span>${v?'Vault '+v:'Not reached'}</span>`;
+  $('mix').innerHTML=mixHTML(r);
+  $('legend').innerHTML=PARTS.filter(([k])=>r[k]>0).map(([k,l])=>`<span><i style="background:var(--${k})"></i>${l} ${r[k]}</span>`).join('');
+  renderTabs();
+}
+function renderTabs(){
+  $('tabs').innerHTML=S.players.map((p,i)=>`<button class="tab ${i===S.cur?'on':''} ${isU(p)?'utab':''}" data-i="${i}"><span>${esc(p.name)}</span><b>${i===S.cur&&show?score(p).total:'•••'}</b></button>`).join('')+
+    (S.mode==='multi'&&S.players.length<5?'<button class="tab add" id="addP" aria-label="Add player">+</button>':'');
+}
+function renderResults(){
+  const list=S.players.map(p=>({p,r:score(p)})).sort((a,b)=>b.r.total-a.r.total);
+  let pos=0,prev=null,ties=false;
+  $('ranks').innerHTML=list.map((x,i)=>{
+    if(x.r.total!==prev){pos=i+1;prev=x.r.total}else ties=true;
+    return `<div class="rank ${pos===1?'first':''} ${isU(x.p)?'urank':''}"><div class="rrow"><span class="pos">${pos}</span><span class="who">${esc(x.p.name)}</span><span class="pts">${x.r.total}</span></div>
+      <div class="mix">${mixHTML(x.r)}</div>
+      <details><summary>Breakdown</summary><div class="bd">${PARTS.filter(([k])=>(k!=='exp'||S.exp)&&!(k==='civ'&&false)).map(([k,l])=>`<span>${l}</span><span>${x.r[k]}</span>`).join('')}</div></details></div>`}).join('');
+  if(S.mode==='solo'){
+    const me=list.find(x=>!isU(x.p)),un=list.find(x=>isU(x.p));
+    if(me.r.total>un.r.total){$('rtitle').textContent='You win';$('rlead').textContent=`You take control of the Edge and drive Unity out, ${me.r.total} to ${un.r.total}.`}
+    else if(me.r.total<un.r.total){$('rtitle').textContent='Unity wins';$('rlead').textContent=`Unity controls the Edge, ${un.r.total} to ${me.r.total}.`}
+    else{$('rtitle').textContent='Tied';$('rlead').textContent=`Both on ${me.r.total} VP. The solo rules don't cover ties against Unity.`}
+  }else{
+    $('rtitle').textContent='Final standings';
+    const w=list[0];$('rlead').textContent=ties&&list[1].r.total===w.r.total?`Tie at the top on ${w.r.total} VP.`:`${w.p.name} wins with ${w.r.total} VP.`;
+    if(ties)$('ranks').innerHTML+='<p class="tie">Tied scores: the tied player with the most modules wins. If still tied, most resources wins. If still tied, the victory is shared.</p>';
+  }
+}
+function go(v){
+  view=v;show=false;
+  ['setup','score','results'].forEach(id=>$(id).classList.toggle('hide',id!==v));
+  $('bar').classList.toggle('hide',v==='setup');$('topBar').classList.toggle('hide',v==='setup');document.body.classList.toggle('home',v==='setup');
+  $('back').classList.toggle('hide',v!=='results');$('go').classList.toggle('hide',v!=='score');$('stand').classList.toggle('hide',v!=='score');
+  if(v==='results')renderResults();
+  if(v==='score')renderForm();
+  if(v==='setup'){$('countPick').classList.add('hide');$('cont').classList.toggle('hide',!S.players.length)}
+  window.scrollTo(0,0);
+}
+function start(mode,n){
+  S.mode=mode;S.cur=0;
+  S.players=mode==='solo'?[newPlayer('You'),newPlayer('Unity','unity')]:Array.from({length:n},(_,i)=>newPlayer('Player '+(i+1)));
+  save();go('score');
+}
+
+function setPath(path,val){
+  const p=S.players[S.cur];const k=path.split('.');
+  if(k[0]==='t')p.t[k[1]][k[2]]=val;else p[path]=val;
+  save();renderNums();
+}
+const clampVal=(inp,v)=>Math.max(+inp.min,Math.min(+inp.max||999,isNaN(v)?0:v));
+
+document.querySelector('.modes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.mode==='solo')start('solo');
+  else{$('countPick').classList.remove('hide');$('countPick').scrollIntoView({behavior:'smooth',block:'center'})}
+});
+document.querySelector('.counts').addEventListener('click',e=>{const b=e.target.closest('button');if(b)start('multi',+b.dataset.n)});
+$('cont').addEventListener('click',()=>go('score'));
+$('form').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-d]');if(!b)return;
+  const inp=b.parentNode.querySelector('input');const v=clampVal(inp,(parseInt(inp.value)||0)+(+b.dataset.d));inp.value=v;setPath(b.dataset.p,v);
+});
+$('form').addEventListener('input',e=>{const t=e.target;if(t.tagName!=='INPUT')return;const v=parseInt(t.value);setPath(t.dataset.p,isNaN(v)?0:clampVal(t,v))});
+$('form').addEventListener('change',e=>{const t=e.target;if(t.tagName==='INPUT')t.value=clampVal(t,parseInt(t.value))});
+$('form').addEventListener('focusin',e=>{if(e.target.tagName==='INPUT')setTimeout(()=>e.target.select(),0)});
+$('name').addEventListener('input',e=>{const p=S.players[S.cur];p.name=e.target.value||(isU(p)?'Unity':'Player '+(S.cur+1));save();renderTabs()});
+$('tabs').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.id==='addP'){S.players.push(newPlayer('Player '+(S.players.length+1)));S.cur=S.players.length-1}
+  else S.cur=+b.dataset.i;
+  show=false;save();renderForm();
+});
+$('peek').addEventListener('click',()=>{show=!show;renderNums()});
+$('expOn').addEventListener('change',e=>{S.exp=e.target.checked;save();renderForm()});
+let armDel=null,armReset=null;
+$('delP').addEventListener('click',e=>{
+  if(armDel){clearTimeout(armDel);armDel=null;S.players.splice(S.cur,1);S.cur=Math.max(0,S.cur-1);e.target.textContent='Remove this player';save();renderForm();return}
+  e.target.textContent='Tap again to remove';armDel=setTimeout(()=>{armDel=null;e.target.textContent='Remove this player'},3000);
+});
+$('reset').addEventListener('click',e=>{
+  if(armReset){clearTimeout(armReset);armReset=null;e.target.textContent='New game';go('setup');return}
+  e.target.textContent='Tap again';armReset=setTimeout(()=>{armReset=null;e.target.textContent='New game'},3000);
+});
+$('go').addEventListener('click',()=>go('results'));
+$('stand').addEventListener('click',()=>go('results'));
+$('back').addEventListener('click',()=>go('score'));
+
+if(S.cur>=S.players.length)S.cur=0;
+go('setup');
+}
+</script>
+</body>
+</html>
