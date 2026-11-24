@@ -208,10 +208,11 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const lvlOf=(id,vp)=>vp>=20?3:vp>=10?2:vp>=(id==='sup'?4:6)?1:0;
 const vaultOf=vp=>vp>=14?2:vp>=9?1:0;
 const isU=p=>p.kind==='unity';
+const START=id=>id==='sup'?3:5;
 const qv=p=>(p.quasar||0)*2+(p.vortex||0)*4;
 
 const newPlayer=(name,kind='player')=>({name,kind,
-  t:Object.fromEntries(TRACKS.map(t=>[t.id,{vp:0,n:0}])),
+  t:Object.fromEntries(TRACKS.map(t=>[t.id,{vp:START(t.id),n:0}])),
   res:0,civEnd:0,vpTrack:0,damaged:0,leaders:0,destiny:0,faction:0,
   moons:0,disc:0,supTok:0,quasar:0,vortex:0,relics:0,shrines:0,corrupted:0,restored:0});
 let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
@@ -246,7 +247,7 @@ function renderForm(){
       box('VP per '+(u?'card':'resource'),'1 each at 9 · 2 each at 14','v-com');
     if(t.id==='civ'&&!u)extra=field('Civ module VP','Game-end VP on undamaged modules','civEnd',p.civEnd);
     return `<section class="card" style="--c:var(--${t.id})"><div class="ch"><h2>${t.name}</h2><span class="sub" id="s-${t.id}">0</span></div>
-      ${field('Track VP','VP printed by the marker (max 20)','t.'+t.id+'.vp',x.vp,0,20)}
+      ${field('Track VP','Starts at '+START(t.id)+' · max 20','t.'+t.id+'.vp',x.vp,START(t.id),20)}
       ${field(t.bld,'Developments built','t.'+t.id+'.n',x.n)}
       ${box('VP per '+t.one,t.id==='sup'?'Level 1 at 4 · 2 at 10 · 3 at 20':'Level 1 at 6 · 2 at 10 · 3 at 20','l-'+t.id)}
       ${extra}</section>`}).join('');
@@ -362,6 +363,7 @@ $('stand').addEventListener('click',()=>go('results'));
 $('back').addEventListener('click',()=>go('score'));
 
 if(S.cur>=S.players.length)S.cur=0;
+S.players.forEach(p=>TRACKS.forEach(t=>{const x=p.t[t.id];x.vp=Math.min(20,Math.max(START(t.id),x.vp||0))}));
 go('setup');
 }
 </script>
