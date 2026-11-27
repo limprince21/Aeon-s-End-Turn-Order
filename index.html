@@ -360,6 +360,7 @@ const RKEY='ae-rand-v1';
 let R=load(RKEY);
 if(!R||!Array.isArray(R.owned))R={owned:['AE'],tab:'game',g:{mages:2,setup:'random',tiers:[1,2,3,4],roll:null},ex:null,exSet:{variant:'DEFAULT',players:2},exHist:[]};
 if(!R.exSet.players)R.exSet.players=R.exSet.party||2;
+R.exSet.players=Math.min(2,R.exSet.players);if(R.ex)R.ex.players=Math.min(2,R.ex.players||2);
 if(R.ex&&!R.ex.banished){R.ex=null;R.exHist=[]}
 const rsave=()=>store(RKEY,R);
 const own=x=>R.owned.includes(x.ex);
@@ -492,7 +493,7 @@ function renderExp(){
   if(!ex){
     h=`<div class="opts">
       <div class="opt"><span>Length</span><select id="xVar" aria-label="Expedition length">${Object.entries(VARIANTS).map(([k,v])=>`<option value="${k}"${k===s.variant?' selected':''}>${v.name} · ${v.sub}</option>`).join('')}</select></div>
-      <div class="opt"><span>Players</span>${pills('data-players',[[1,'1'],[2,'2'],[3,'3'],[4,'4']],v=>v===s.players)}</div>
+      <div class="opt"><span>Players</span>${pills('data-players',[[1,'1'],[2,'2']],v=>v===s.players)}</div>
     </div>
     <button class="btn main" id="xStart" style="width:100%;margin-top:12px">Begin expedition</button>
     <p class="hint">Follows the official expedition rules. The Barracks starts with 4 mages and 3 gems, 2 relics and 4 spells. Each battle draws a nemesis from that battle's tier. Wins add treasures by battle number plus 1 gem, 1 relic and 1 spell.${s.variant==='SHORT'?' Short starts at battle 2 with the battle 1 rewards.':''}</p>`;
@@ -511,7 +512,7 @@ function renderExp(){
       <p style="margin:4px 0 8px"><b>Mages:</b> each player picks 1 from the Barracks.</p>
       <p style="margin:0 0 8px"><b>Supply:</b> pick 9 from the Barracks (3 gems, 2 relics, 4 spells) and banish the rest with ✕.</p>
       <p style="margin:0 0 8px"><b>Treasures:</b> ${tiers.length?tiers.map(t=>TUSE[t]).join('. ')+'.':'none yet.'}</p>
-      ${deck?`<p style="margin:0"><b>Nemesis deck</b> (A basic, V upgraded basic, plus the nemesis's own cards${ex.players===1?'; 2-player counts':''}):</p>
+      ${deck?`<p style="margin:0"><b>Nemesis deck</b> (A basic, V upgraded basic, plus the nemesis's own cards):</p>
       <div class="counts" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:8px 0 0"><div><b>${deck[0]}</b>Level 1</div><div><b>${deck[1]}</b>Level 2</div><div><b>${deck[2]}</b>Level 3</div></div>`:''}
     </div></details>`;
     h+=`<div class="actions"><button class="btn win" data-x="win">Won the battle</button><button class="btn lose" data-x="lose">Lost the battle</button></div>`;
