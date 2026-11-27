@@ -249,7 +249,7 @@ details.box .list{padding-bottom:12px}
 
     <!-- RANDOMIZER -->
     <section id="vRand" class="hide">
-      <div class="seg sub" id="randSeg"><button data-r="game">Game</button><button data-r="exp">Expedition</button></div>
+      <div class="seg sub" id="randSeg"><button data-r="game">One-shot</button><button data-r="exp">Expedition</button></div>
       <div id="rGame"></div>
       <div id="rExp"></div>
     </section>
@@ -467,7 +467,7 @@ function renderGame(){
     <div class="opt"><span>Nemesis tier</span>${pills('data-tier',[[1,'1'],[2,'2'],[3,'3'],[4,'4']],v=>g.tiers.includes(v))}</div>
   </div>
   ${marketPanel()}
-  <button class="btn main" id="gRoll" style="width:100%;margin-top:12px">${r?'Roll everything again':'Roll a game'}</button>`;
+  <button class="btn main" id="gRoll" style="width:100%;margin-top:12px">${r?'Roll everything again':'Roll a one-shot'}</button>`;
   if(r){
     h+=`<div class="dealt">${nemHTML(r.nem,'Nemesis','data-gr="nem"')}
       <h3>Mages</h3><div class="list">${r.mages.map((id,i)=>mageHTML(id,`data-gr="mage" data-i="${i}"`)).join('')}</div>
