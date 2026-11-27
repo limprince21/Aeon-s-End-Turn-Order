@@ -139,6 +139,23 @@ select{appearance:none;-webkit-appearance:none;max-width:60%;min-height:42px;bor
 .item.static{grid-template-columns:auto minmax(0,1fr)}
 .gem{--c:var(--gem)}.relic{--c:var(--relic)}.spell{--c:var(--spell)}.mage{--c:var(--mage)}.tre{--c:var(--tre)}
 .mage .ic{font-size:15px}
+.mpanel{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 14px 14px}
+.mhead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.mhead .btn{flex:none;min-height:40px}
+.mkt{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:3px}
+.mtile{height:32px;border-radius:6px;display:grid;place-items:center;font-size:12px;font-weight:600;white-space:nowrap;background:color-mix(in srgb,var(--c) 22%,#15121d);border:1px solid color-mix(in srgb,var(--c) 55%,transparent);color:color-mix(in srgb,var(--c) 40%,#fff)}
+.mlist{display:grid;gap:8px;margin-top:12px}
+.mrow{display:grid;gap:6px;text-align:left;padding:10px;border-radius:12px;border:1px solid var(--line);background:#15121d;cursor:pointer}
+.mrow.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.mname{font-weight:600;font-size:14px}
+.mname span{font-weight:400;color:var(--mute);margin-left:6px;font-size:13px}
+.ctile{border:1px solid var(--line);border-left:3px solid var(--c);border-radius:12px;padding:8px;margin-bottom:8px;display:grid;gap:8px;background:#15121d}
+.tseg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.tseg button{min-height:36px;border-radius:8px;border:1px solid var(--line);background:none;color:var(--mute);font-weight:600;font-size:14px;cursor:pointer}
+.tseg button.on{background:var(--c);border-color:transparent;color:#160f2a}
+.crow2{display:flex;gap:8px;align-items:center}
+.crow2 select{flex:1;max-width:none}
+.cany{flex:none;width:116px;text-align:center;color:var(--mute);font-size:14px}
 .hint{font-size:13px;color:var(--mute);margin:8px 2px 0}
 .warn{margin-top:12px;padding:12px;border-radius:12px;border:1px dashed #6b4a55;color:#f0c7cf;font-size:14px}
 .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
@@ -338,7 +355,7 @@ const byId=a=>Object.fromEntries(a.map(x=>[x.id,x]));
 const NEMI=byId(NEM),MAGEI=byId(MAGE),CARDI=byId(CARD),TREI=byId(TRE);
 const W=(type,op,th)=>Array.isArray(th)?{type,op,vals:th}:{type,op,th};
 const SETUPS={
-  random:{name:'Random (3 gems, 2 relics, 4 spells)',tiles:[W('Gem','ANY'),W('Gem','ANY'),W('Gem','ANY'),W('Relic','ANY'),W('Relic','ANY'),W('Spell','ANY'),W('Spell','ANY'),W('Spell','ANY'),W('Spell','ANY')]},
+  random:{name:'Random',tiles:[W('Gem','ANY'),W('Gem','ANY'),W('Gem','ANY'),W('Relic','ANY'),W('Relic','ANY'),W('Spell','ANY'),W('Spell','ANY'),W('Spell','ANY'),W('Spell','ANY')]},
   market1:{name:'Market setup 1',tiles:[W('Gem','<',4),W('Gem','=',4),W('Gem','ANY'),W('Relic','ANY'),W('Relic','ANY'),W('Spell','<',5),W('Spell','<',5),W('Spell','>',5),W('Spell','>',5)]},
   market1Inc:{name:'Market setup 1 (inclusive)',tiles:[W('Gem','<',4),W('Gem','=',4),W('Gem','ANY'),W('Relic','ANY'),W('Relic','ANY'),W('Spell','<=',5),W('Spell','<=',5),W('Spell','>=',5),W('Spell','>=',5)]},
   market2:{name:'Market setup 2',tiles:[W('Gem','<',3),W('Gem','>',3),W('Gem','>',3),W('Relic','>',4),W('Relic','ANY'),W('Spell','<',6),W('Spell','<',6),W('Spell','<',6),W('Spell','>',6)]},
@@ -359,6 +376,7 @@ const tileLabel=t=>t.op==='ANY'?'Any cost':t.op==='OR'?'Cost '+t.vals.join(' or 
 const RKEY='ae-rand-v1';
 let R=load(RKEY);
 if(!R||!Array.isArray(R.owned))R={owned:['AE'],tab:'game',g:{mages:2,setup:'random',tiers:[1,2,3,4],roll:null},ex:null,exSet:{variant:'DEFAULT',players:2},exHist:[]};
+if(!Array.isArray(R.g.custom))R.g.custom=SETUPS.random.tiles.map(t=>({type:t.type,op:'ANY',th:3}));
 if(!R.exSet.players)R.exSet.players=R.exSet.party||2;
 R.exSet.players=Math.min(2,R.exSet.players);if(R.ex)R.ex.players=Math.min(2,R.ex.players||2);
 if(R.ex&&!R.ex.banished){R.ex=null;R.exHist=[]}
@@ -383,9 +401,10 @@ function rollTile(t,used){
   let c=pick(pool.filter(c=>tileTest(c,t)));
   return c?c.id:null;
 }
+const getSetup=id=>id==='custom'?{name:'Custom',tiles:R.g.custom}:(SETUPS[id]||SETUPS.random);
 function rollMarket(setup){
   const used=new Set();
-  return SETUPS[setup].tiles.map(t=>{const id=rollTile(t,used);if(id)used.add(id);return {id,t}});
+  return getSetup(setup).tiles.map(t=>{const id=rollTile(t,used);if(id)used.add(id);return {id,t}});
 }
 const typeCls=t=>t.toLowerCase();
 
@@ -407,19 +426,53 @@ const mageHTML=(id,rr)=>{const m=MAGEI[id];if(!m)return '';return `<div class="i
 const cardHTML=(id,t,rr)=>{const c=CARDI[id];const type=c?c.type:t.type;
   return `<div class="item ${typeCls(type)}${rr?'':' static'}"><span class="ic">${c?c.cost:'–'}</span><span class="nm">${c?esc(c.name):'No match'}<span class="mt">${type}${t?' · '+tileLabel(t):''}${c?' · '+esc(EXN[c.ex]):' · not enough cards in your collection'}</span></span>${rr?`<button class="rr" ${rr} aria-label="Reroll">↻</button>`:''}</div>`};
 
+
+let mOpen=false;
+const SYM={'ANY':'Any','<':'<','<=':'≤','=':'=','>=':'≥','>':'>'};
+const tSym=t=>t.op==='OR'?t.vals.join('/'):t.op==='ANY'?'Any':SYM[t.op]+t.th;
+const tilesHTML=tiles=>`<div class="mkt">${tiles.map(t=>`<span class="mtile ${typeCls(t.type)}">${tSym(t)}</span>`).join('')}</div>`;
+const countTxt=tiles=>['Gem','Relic','Spell'].map(ty=>{const n=tiles.filter(t=>t.type===ty).length;return n?n+' '+ty.toLowerCase()+(n>1?'s':''):''}).filter(Boolean).join(', ');
+function marketPanel(){
+  const g=R.g,cur=getSetup(g.setup);
+  let h=`<div class="mpanel"><div class="mhead"><span><b>Market</b><span class="small">${esc(cur.name)} · ${countTxt(cur.tiles)}</span></span><button class="btn" data-mopen="1">${mOpen?'Done':'Change'}</button></div>${tilesHTML(cur.tiles)}`;
+  if(mOpen){
+    h+=`<div class="mlist">${[...Object.keys(SETUPS),'custom'].map(k=>{const st=getSetup(k);return `<button class="mrow${k===g.setup?' on':''}" data-ms="${k}"><span class="mname">${esc(st.name)}<span>${countTxt(st.tiles)}</span></span>${tilesHTML(st.tiles)}</button>`}).join('')}</div>`;
+  }
+  if(g.setup==='custom'){
+    h+=`<div class="cedit"><h3 style="margin-top:14px">Custom market</h3>${g.custom.map((t,i)=>`<div class="ctile ${typeCls(t.type)}">
+      <div class="tseg">${['Gem','Relic','Spell'].map(ty=>`<button class="${t.type===ty?'on '+typeCls(ty):''}" data-ct="${ty}" data-i="${i}">${ty}</button>`).join('')}</div>
+      <div class="crow2"><select data-cop="${i}" aria-label="Cost rule">${[['ANY','Any cost'],['<','Under'],['<=','Up to'],['=','Exactly'],['>=','At least'],['>','Over']].map(([v,l])=>`<option value="${v}"${t.op===v?' selected':''}>${l}</option>`).join('')}</select>
+      ${t.op==='ANY'?'<span class="cany">any cost</span>':`<div class="step"><button data-cv="-1" data-i="${i}" aria-label="Lower cost">−</button><span class="cnt">${t.th}</span><button data-cv="1" data-i="${i}" aria-label="Higher cost">+</button></div>`}
+      <button class="rm" data-crm="${i}" aria-label="Remove slot">×</button></div></div>`).join('')}
+      <div class="bar2"><button class="btn" data-cadd="1"${g.custom.length>=16?' disabled':''}>+ Add slot</button><button class="btn" data-creset="1">Reset to 3/2/4</button></div>
+      <p class="hint">${g.custom.length} slots. Saved for next time.</p></div>`;
+  }
+  return h+'</div>';
+}
+function marketClick(b){
+  const g=R.g;
+  if(b.dataset.mopen){mOpen=!mOpen;return true}
+  if(b.dataset.ms){g.setup=b.dataset.ms;if(g.setup!=='custom')mOpen=false;return true}
+  if(b.dataset.ct){g.custom[+b.dataset.i].type=b.dataset.ct;return true}
+  if(b.dataset.cv){const t=g.custom[+b.dataset.i];t.th=Math.max(0,Math.min(12,t.th+(+b.dataset.cv)));return true}
+  if(b.dataset.crm){if(g.custom.length>1)g.custom.splice(+b.dataset.crm,1);return true}
+  if(b.dataset.cadd){const last=g.custom[g.custom.length-1]||{type:'Spell',op:'ANY',th:3};g.custom.push({...last});return true}
+  if(b.dataset.creset){g.custom=SETUPS.random.tiles.map(t=>({type:t.type,op:'ANY',th:3}));return true}
+  return false;
+}
 function renderGame(){
   const g=R.g,r=g.roll;
   let h=`<div class="opts">
     <div class="opt"><span>Mages</span>${pills('data-mages',[[1,'1'],[2,'2'],[3,'3'],[4,'4']],v=>v===g.mages)}</div>
     <div class="opt"><span>Nemesis tier</span>${pills('data-tier',[[1,'1'],[2,'2'],[3,'3'],[4,'4']],v=>g.tiers.includes(v))}</div>
-    <div class="opt"><span>Market</span>${setupSelect('gSetup',g.setup)}</div>
   </div>
+  ${marketPanel()}
   <button class="btn main" id="gRoll" style="width:100%;margin-top:12px">${r?'Roll everything again':'Roll a game'}</button>`;
   if(r){
     h+=`<div class="dealt">${nemHTML(r.nem,'Nemesis','data-gr="nem"')}
       <h3>Mages</h3><div class="list">${r.mages.map((id,i)=>mageHTML(id,`data-gr="mage" data-i="${i}"`)).join('')}</div>
       ${r.mages.length<g.mages?'<div class="warn">Not enough mages in your collection for this many players.</div>':''}
-      <h3>Market · ${esc(SETUPS[r.setup].name)}</h3><div class="list">${r.market.map((m,i)=>cardHTML(m.id,m.t,`data-gr="card" data-i="${i}"`)).join('')}</div>
+      <h3>Market · ${esc(getSetup(r.setup).name)}</h3><div class="list">${r.market.map((m,i)=>cardHTML(m.id,m.t,`data-gr="card" data-i="${i}"`)).join('')}</div>
       <p class="hint">Tap ↻ to reroll one card.</p></div>`;
   }else h+=`<p class="hint" style="text-align:center;margin-top:14px">Using ${R.owned.length} ${R.owned.length===1?'expansion':'expansions'} from your collection.</p>`;
   $('rGame').innerHTML=h;
@@ -430,17 +483,18 @@ $('rGame').addEventListener('click',e=>{
   if(b.dataset.mages){g.mages=+b.dataset.mages;rsave();renderGame();return}
   if(b.dataset.tier){const t=+b.dataset.tier;g.tiers=g.tiers.includes(t)?g.tiers.filter(x=>x!==t):[...g.tiers,t];if(!g.tiers.length)g.tiers=[t];rsave();renderGame();return}
   if(b.id==='gRoll'){rollGame();return}
+  if(marketClick(b)){rsave();renderGame();return}
   const r=g.roll;if(!r||!b.dataset.gr)return;
   if(b.dataset.gr==='nem')r.nem=rollNem(g.tiers,[r.nem]);
   if(b.dataset.gr==='mage'){const i=+b.dataset.i;const n=rollMages(1,r.mages);if(n[0])r.mages[i]=n[0]}
   if(b.dataset.gr==='card'){const i=+b.dataset.i;const used=new Set(r.market.map(m=>m.id).filter(Boolean));const id=rollTile(r.market[i].t,used);if(id)r.market[i].id=id}
   rsave();renderGame();
 });
-$('rGame').addEventListener('change',e=>{if(e.target.id==='gSetup'){R.g.setup=e.target.value;rsave()}});
+$('rGame').addEventListener('change',e=>{const c=e.target.dataset.cop;if(c!==undefined){R.g.custom[+c].op=e.target.value;rsave();renderGame()}});
 
 /* ---------- expedition (official New Age expedition rules) ---------- */
 // Nemesis deck per level for each battle stack: A = basic nemesis card, V = upgraded basic nemesis card
-const NDECK={2:[['3A','5A','7A'],['1V + 2A','3V + 2A','3V + 4A'],['2V + 1A','4V + 1A','5V + 2A'],['3V','5V','7V']],
+const NDECK={2:[['3B','5B','7B'],['1U + 2B','3U + 2B','3U + 4B'],['2U + 1B','4U + 1B','5U + 2B'],['3U','5U','7U']],
   3:[['5A','6A','7A'],['1V + 4A','3V + 3A','3V + 4A'],['2V + 3A','4V + 2A','5V + 2A'],['3V + 2A','5V + 1A','7V']],
   4:[['8A','7A','7A'],['1V + 7A','3V + 4A','3V + 4A'],['2V + 6A','4V + 3A','5V + 2A'],['3V + 5A','5V + 2A','7V']]};
 const TCOUNT={1:5,2:3,3:5,4:5};
@@ -506,13 +560,13 @@ function renderExp(){
   else{
     const meta=`Battle ${ex.cur+1} · Tier ${b.tier===5?'5 (Fight Five)':b.tier}${b.tries?` · Attempt ${b.tries+1}`:''}`;
     h+=nemHTML(b.nem,meta,ex.cur===0&&!b.tries&&!(ex.last&&ex.last.kind!=='start')?'data-x="rerollNem"':'');
-    const pl=Math.max(2,ex.players),deck=b.tier<=4?NDECK[pl][b.tier-1]:['3V','5V','7V'];
+    const pl=Math.max(2,ex.players),deck=b.tier<=4?NDECK[pl][b.tier-1]:['3U','5U','7U'];
     const tiers=ex.tiers.slice().sort();
     h+=`<details class="box" open><summary>Before this battle <span>${ex.players} ${ex.players>1?'players':'player'}</span></summary><div style="padding-bottom:12px;font-size:14px">
       <p style="margin:4px 0 8px"><b>Mages:</b> each player picks 1 from the Barracks.</p>
       <p style="margin:0 0 8px"><b>Supply:</b> pick 9 from the Barracks (3 gems, 2 relics, 4 spells) and banish the rest with ✕.</p>
       <p style="margin:0 0 8px"><b>Treasures:</b> ${tiers.length?tiers.map(t=>TUSE[t]).join('. ')+'.':'none yet.'}</p>
-      ${deck?`<p style="margin:0"><b>Nemesis deck</b> (A basic, V upgraded basic, plus the nemesis's own cards):</p>
+      ${deck?`<p style="margin:0"><b>Nemesis deck</b> (B = basic, U = upgraded basic, plus the nemesis's own cards):</p>
       <div class="counts" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:8px 0 0"><div><b>${deck[0]}</b>Level 1</div><div><b>${deck[1]}</b>Level 2</div><div><b>${deck[2]}</b>Level 3</div></div>`:''}
     </div></details>`;
     h+=`<div class="actions"><button class="btn win" data-x="win">Won the battle</button><button class="btn lose" data-x="lose">Lost the battle</button></div>`;
