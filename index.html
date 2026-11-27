@@ -505,7 +505,7 @@ function renderExp(){
   else{
     const meta=`Battle ${ex.cur+1} · Tier ${b.tier===5?'5 (Fight Five)':b.tier}${b.tries?` · Attempt ${b.tries+1}`:''}`;
     h+=nemHTML(b.nem,meta,ex.cur===0&&!b.tries&&!(ex.last&&ex.last.kind!=='start')?'data-x="rerollNem"':'');
-    const pl=Math.max(2,ex.players),deck=b.tier<=4?NDECK[pl][b.tier-1]:null;
+    const pl=Math.max(2,ex.players),deck=b.tier<=4?NDECK[pl][b.tier-1]:['3V','5V','7V'];
     const tiers=ex.tiers.slice().sort();
     h+=`<details class="box" open><summary>Before this battle <span>${ex.players} ${ex.players>1?'players':'player'}</span></summary><div style="padding-bottom:12px;font-size:14px">
       <p style="margin:4px 0 8px"><b>Mages:</b> each player picks 1 from the Barracks.</p>
