@@ -37,6 +37,7 @@ h3{font-size:14px;font-weight:600;color:var(--mute);margin:18px 0 8px}
 .nav{position:sticky;top:0;z-index:5;margin:0 -16px 14px;padding:calc(env(safe-area-inset-top) + 8px) 16px 10px;background:linear-gradient(to bottom,rgba(20,17,28,.97) 75%,rgba(20,17,28,0))}
 .navrow{display:flex;align-items:center;gap:10px}
 .home-btn{flex:none;width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--panel);cursor:pointer;display:grid;place-items:center}
+.home-btn.on{border-color:var(--acc);box-shadow:0 0 12px rgba(160,131,255,.5)}
 .home-btn span{width:18px;height:18px;border-radius:50%;box-shadow:0 0 0 2px var(--acc),0 0 10px var(--acc)}
 .seg{flex:1;display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
 .seg button{min-height:38px;border:0;border-radius:9px;background:none;color:var(--mute);font-weight:600;font-size:15px;cursor:pointer}
@@ -188,6 +189,7 @@ details.box .list{padding-bottom:12px}
       <button class="choice" data-go="turn"><b>Turn order</b><span>Draw the turn order deck</span></button>
       <button class="choice alt" data-go="rand"><b>Randomizer</b><span>Nemesis, mages and market from your collection</span></button>
     </div>
+    <button class="btn" data-go="col" id="homeCol" style="margin-top:4px;background:none">Your collection</button>
   </section>
 
   <!-- APP SHELL -->
@@ -195,6 +197,7 @@ details.box .list{padding-bottom:12px}
     <div class="nav"><div class="navrow">
       <button class="home-btn" id="toHome" aria-label="Home"><span></span></button>
       <div class="seg" id="mainSeg"><button data-go="turn">Turn order</button><button data-go="rand">Randomizer</button></div>
+      <button class="home-btn" data-go="col" id="colBtn" aria-label="Your collection"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="5" width="10" height="13" rx="2" fill="none" stroke="#c9b6ff" stroke-width="1.8"/><path d="M7 2h8a2 2 0 0 1 2 2v11" fill="none" stroke="#c9b6ff" stroke-width="1.8"/></svg></button>
     </div></div>
 
     <!-- TURN ORDER -->
@@ -229,11 +232,13 @@ details.box .list{padding-bottom:12px}
 
     <!-- RANDOMIZER -->
     <section id="vRand" class="hide">
-      <div class="seg sub" id="randSeg" style="--n:3"><button data-r="game">Game</button><button data-r="exp">Expedition</button><button data-r="col">Collection</button></div>
+      <div class="seg sub" id="randSeg"><button data-r="game">Game</button><button data-r="exp">Expedition</button></div>
       <div id="rGame"></div>
       <div id="rExp"></div>
-      <div id="rCol"></div>
     </section>
+
+    <!-- COLLECTION -->
+    <section id="vCol" class="hide"><div id="rCol"></div></section>
   </div>
 </div>
 
@@ -252,10 +257,13 @@ let view='home';
 function go(v){
   view=v;
   $('vHome').classList.toggle('hide',v!=='home');$('shell').classList.toggle('hide',v==='home');
-  $('vTurn').classList.toggle('hide',v!=='turn');$('vRand').classList.toggle('hide',v!=='rand');
+  $('vTurn').classList.toggle('hide',v!=='turn');$('vRand').classList.toggle('hide',v!=='rand');$('vCol').classList.toggle('hide',v!=='col');
+  $('colBtn').classList.toggle('on',v==='col');
   document.querySelectorAll('#mainSeg button').forEach(b=>b.classList.toggle('on',b.dataset.go===v));
   if(v==='turn')renderPlay(false),renderSetup();
   if(v==='rand')renderRand();
+  if(v==='col')renderCol();
+  if(v==='home')$('homeCol').textContent='Your collection · '+R.owned.length+(R.owned.length===1?' expansion':' expansions');
   window.scrollTo(0,0);
 }
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
@@ -350,7 +358,9 @@ const tileLabel=t=>t.op==='ANY'?'Any cost':t.op==='OR'?'Cost '+t.vals.join(' or 
 /* ================= RANDOMIZER STATE ================= */
 const RKEY='ae-rand-v1';
 let R=load(RKEY);
-if(!R||!Array.isArray(R.owned))R={owned:['AE'],tab:'game',g:{mages:2,setup:'random',tiers:[1,2,3,4],roll:null},ex:null,exSet:{variant:'DEFAULT',party:2,setup:'random'},exHist:[]};
+if(!R||!Array.isArray(R.owned))R={owned:['AE'],tab:'game',g:{mages:2,setup:'random',tiers:[1,2,3,4],roll:null},ex:null,exSet:{variant:'DEFAULT',players:2},exHist:[]};
+if(!R.exSet.players)R.exSet.players=R.exSet.party||2;
+if(R.ex&&!R.ex.banished){R.ex=null;R.exHist=[]}
 const rsave=()=>store(RKEY,R);
 const own=x=>R.owned.includes(x.ex);
 const P={nem:()=>NEM.filter(own),mage:()=>MAGE.filter(own),card:()=>CARD.filter(own),tre:()=>TRE.filter(own)};
@@ -381,8 +391,9 @@ const typeCls=t=>t.toLowerCase();
 /* ================= RANDOMIZER RENDER ================= */
 function renderRand(){
   document.querySelectorAll('#randSeg button').forEach(b=>b.classList.toggle('on',b.dataset.r===R.tab));
-  $('rGame').classList.toggle('hide',R.tab!=='game');$('rExp').classList.toggle('hide',R.tab!=='exp');$('rCol').classList.toggle('hide',R.tab!=='col');
-  if(R.tab==='game')renderGame();if(R.tab==='exp')renderExp();if(R.tab==='col')renderCol();
+  if(R.tab!=='exp')R.tab='game';
+  $('rGame').classList.toggle('hide',R.tab!=='game');$('rExp').classList.toggle('hide',R.tab!=='exp');
+  if(R.tab==='game')renderGame();else renderExp();
 }
 $('randSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;R.tab=b.dataset.r;rsave();renderRand()});
 
@@ -426,26 +437,37 @@ $('rGame').addEventListener('click',e=>{
 });
 $('rGame').addEventListener('change',e=>{if(e.target.id==='gSetup'){R.g.setup=e.target.value;rsave()}});
 
-/* ---------- expedition ---------- */
+/* ---------- expedition (official New Age expedition rules) ---------- */
+// Nemesis deck per level for each battle stack: A = basic nemesis card, V = upgraded basic nemesis card
+const NDECK={2:[['3A','5A','7A'],['1V + 2A','3V + 2A','3V + 4A'],['2V + 1A','4V + 1A','5V + 2A'],['3V','5V','7V']],
+  3:[['5A','6A','7A'],['1V + 4A','3V + 3A','3V + 4A'],['2V + 3A','4V + 2A','5V + 2A'],['3V + 2A','5V + 1A','7V']],
+  4:[['8A','7A','7A'],['1V + 7A','3V + 4A','3V + 4A'],['2V + 6A','4V + 3A','5V + 2A'],['3V + 5A','5V + 2A','7V']]};
+const TCOUNT={1:5,2:3,3:5,4:5};
+const PTS=[6,4,2];
 function exSnap(){R.exHist.push(JSON.stringify(R.ex));if(R.exHist.length>30)R.exHist.shift()}
+function stillCards(type){const ex=R.ex;return P.card().filter(c=>c.type===type&&!ex.supply.includes(c.id)&&!ex.banished.includes(c.id))}
+function stillTre(level){const ex=R.ex;return P.tre().filter(t=>t.level===level&&!ex.treasures.includes(t.id))}
+function takeTre(level,n){const out=shuffle(stillTre(level)).slice(0,n).map(t=>t.id);R.ex.treasures.push(...out);if(!R.ex.tiers.includes(level))R.ex.tiers.push(level);return out}
+function takeCard(type){const c=pick(stillCards(type));if(c){R.ex.supply.push(c.id);return c.id}return null}
+function expand(rw){['Gem','Relic','Spell'].forEach(t=>{const id=takeCard(t);if(id)rw.cards.push(id)})}
 function startExp(){
   const s=R.exSet,v=VARIANTS[s.variant];
-  const ex={variant:s.variant,party:s.party,setup:s.setup,mages:rollMages(s.party),supply:rollMarket(s.setup).map(m=>m.id).filter(Boolean),treasures:[],used:[],
+  const ex={variant:s.variant,players:s.players,mages:rollMages(4),supply:[],banished:[],treasures:[],tiers:[],used:[],
     battles:v.list.map(([tier,tl])=>({tier,tl,nem:null,status:'locked',tries:0})),cur:0,last:null,done:false};
-  ex.battles[0].status='current';ex.battles[0].nem=rollNem([ex.battles[0].tier]);ex.used.push(ex.battles[0].nem);
-  R.ex=ex;R.exHist=[];rsave();renderExp();
+  R.ex=ex;
+  // Barracks supplies: 3 gems, 2 relics, 4 spells
+  ['Gem','Gem','Gem','Relic','Relic','Spell','Spell','Spell','Spell'].forEach(takeCard);
+  if(s.variant==='SHORT'){const rw={kind:'start',treasures:takeTre(1,5),cards:[],mages:[]};expand(rw);ex.last=rw}
+  ex.battles[0].status='current';ex.battles[0].nem=rollNem([ex.battles[0].tier]);if(ex.battles[0].nem)ex.used.push(ex.battles[0].nem);
+  R.exHist=[];rsave();renderExp();
 }
-function stillCards(type){const ex=R.ex;return P.card().filter(c=>c.type===type&&!ex.supply.includes(c.id))}
-function stillTre(level){const ex=R.ex;return P.tre().filter(t=>t.level===level&&!ex.treasures.includes(t.id))}
-function takeTre(level,n){const out=shuffle(stillTre(level)).slice(0,n).map(t=>t.id);R.ex.treasures.push(...out);return out}
-function takeCard(type){const c=pick(stillCards(type));if(c){R.ex.supply.push(c.id);return c.id}return null}
 function winBattle(){
   exSnap();const ex=R.ex,b=ex.battles[ex.cur];b.status='won';
   const rw={kind:'win',battle:ex.cur,treasures:[],cards:[],mages:[]};
-  if(b.tl){rw.treasures=takeTre(b.tl,b.tl===2?3:5);
+  if(b.tl){rw.treasures=takeTre(b.tl,TCOUNT[b.tl]);
     if(b.tl===4){rw.treasures.push(...takeTre(1,2),...takeTre(2,1),...takeTre(3,2))}}
-  ['Gem','Relic','Spell'].forEach(t=>{const id=takeCard(t);if(id)rw.cards.push(id)});
-  if(b.tl===4){['Gem','Relic','Spell'].forEach(t=>{const id=takeCard(t);if(id)rw.cards.push(id)});const m=rollMages(1,ex.mages);if(m[0]){ex.mages.push(m[0]);rw.mages.push(m[0])}}
+  expand(rw);
+  if(b.tl===4){expand(rw);const m=rollMages(1,ex.mages);if(m[0]){ex.mages.push(m[0]);rw.mages.push(m[0])}}
   ex.last=rw;
   if(ex.cur<ex.battles.length-1){ex.cur++;const nb=ex.battles[ex.cur];nb.status='current';nb.nem=rollNem([nb.tier],ex.used);if(nb.nem)ex.used.push(nb.nem)}
   else ex.done=true;
@@ -453,49 +475,61 @@ function winBattle(){
 }
 function loseBattle(){exSnap();const ex=R.ex;ex.battles[ex.cur].tries++;ex.last={kind:'loss',battle:ex.cur,choose:true};rsave();renderExp()}
 function lossReward(type){
-  exSnap();const ex=R.ex,rw={kind:'loss',battle:ex.cur,treasures:[],cards:[],mages:[],type};
+  exSnap();const ex=R.ex,rw={kind:'loss',battle:ex.cur,treasures:[],cards:[],mages:[]};
   if(type==='Mage'){const m=rollMages(1,ex.mages);if(m[0]){ex.mages.push(m[0]);rw.mages.push(m[0])}}
-  else if(type==='Treasure'){rw.treasures=takeTre(1,1)}
+  else if(type.startsWith('T')){rw.treasures=takeTre(+type.slice(1),1)}
   else{const id=takeCard(type);if(id)rw.cards.push(id)}
   ex.last=rw;rsave();renderExp();
 }
-const treHTML=id=>{const t=TREI[id];return t?`<div class="item tre static"><span class="ic">${t.level}</span><span class="nm">${esc(t.name)}<span class="mt">Treasure level ${t.level} · ${esc(EXN[t.ex])}</span></span></div>`:''};
+const score=ex=>ex.battles.reduce((a,b)=>a+(b.status==='won'?(PTS[b.tries]||0):0),0);
+const treHTML=id=>{const t=TREI[id];return t?`<div class="item tre static"><span class="ic">${t.level}</span><span class="nm">${esc(t.name)}<span class="mt">Treasure tier ${t.level} · ${esc(EXN[t.ex])}</span></span></div>`:''};
 const supplySorted=ids=>ids.map(id=>CARDI[id]).filter(Boolean).sort((a,b)=>'GemRelicSpell'.indexOf(a.type)-'GemRelicSpell'.indexOf(b.type)||a.cost-b.cost||a.name.localeCompare(b.name));
+const supItem=c=>`<div class="item ${typeCls(c.type)}"><span class="ic">${c.cost}</span><span class="nm">${esc(c.name)}<span class="mt">${c.type} · ${esc(EXN[c.ex])}</span></span><button class="rr" data-ban="${c.id}" aria-label="Banish ${esc(c.name)}">✕</button></div>`;
+const TUSE={1:'Tier 1: each player swaps 1 into their starting deck for a Spark or Crystal',2:'Tier 2: the group takes exactly 1, shared by everyone',3:'Tier 3: each player takes 1 and places it on their mat',4:'Tier 4: per your Fight Five rules'};
 
 function renderExp(){
   const ex=R.ex,s=R.exSet;let h='';
   if(!ex){
     h=`<div class="opts">
       <div class="opt"><span>Length</span><select id="xVar" aria-label="Expedition length">${Object.entries(VARIANTS).map(([k,v])=>`<option value="${k}"${k===s.variant?' selected':''}>${v.name} · ${v.sub}</option>`).join('')}</select></div>
-      <div class="opt"><span>Mages</span>${pills('data-party',[[1,'1'],[2,'2'],[3,'3'],[4,'4']],v=>v===s.party)}</div>
-      <div class="opt"><span>Starting market</span>${setupSelect('xSetup',s.setup)}</div>
+      <div class="opt"><span>Players</span>${pills('data-players',[[1,'1'],[2,'2'],[3,'3'],[4,'4']],v=>v===s.players)}</div>
     </div>
     <button class="btn main" id="xStart" style="width:100%;margin-top:12px">Begin expedition</button>
-    <p class="hint">Each battle draws a nemesis from that battle's tier, never repeating one. Wins add treasure and new market cards to your supply.</p>`;
+    <p class="hint">Follows the official expedition rules. The Barracks starts with 4 mages and 3 gems, 2 relics and 4 spells. Each battle draws a nemesis from that battle's tier. Wins add treasures by battle number plus 1 gem, 1 relic and 1 spell.${s.variant==='SHORT'?' Short starts at battle 2 with the battle 1 rewards.':''}</p>`;
     $('rExp').innerHTML=h;return;
   }
   const v=VARIANTS[ex.variant],b=ex.battles[ex.cur];
-  h+=`<div class="trow"><h1>${v.name} expedition</h1><span class="round">${ex.done?'Complete':'Battle '+(ex.cur+1)+' of '+ex.battles.length}</span></div>
+  h+=`<div class="trow"><h1>${v.name} expedition</h1><span class="round">${ex.done?'Complete':'Battle '+(ex.cur+1)+' of '+ex.battles.length} · ${score(ex)} pts</span></div>
   <div class="path">${ex.battles.map((x,i)=>`${i?`<span class="link${x.status==='won'||x.status==='current'?' won':''}"></span>`:''}<span class="node ${x.status==='won'?'won':x.status==='current'&&!ex.done?'cur':''}" title="Battle ${i+1}, tier ${x.tier}">${x.tier===5?'V':['I','II','III','IV'][x.tier-1]}</span>`).join('')}</div>`;
-  if(ex.done){h+=`<div class="reward"><h2>Expedition complete</h2><p class="lead" style="margin:0">Gravehold stands. Every battle won.</p></div>`}
+  if(ex.done){h+=`<div class="reward"><h2>Expedition complete</h2><p class="lead" style="margin:0">Gravehold stands. Final score: <b style="color:var(--ink)">${score(ex)}</b> of ${ex.battles.length*6}.</p></div>`}
   else{
     const meta=`Battle ${ex.cur+1} · Tier ${b.tier===5?'5 (Fight Five)':b.tier}${b.tries?` · Attempt ${b.tries+1}`:''}`;
-    h+=nemHTML(b.nem,meta,ex.cur===0&&!b.tries&&!ex.last?'data-x="rerollNem"':'');
-    if(b.tier===5)h+=`<p class="hint">Fight Five: use this nemesis's Fight Five setup changes and Increased Difficulty.</p>`;
+    h+=nemHTML(b.nem,meta,ex.cur===0&&!b.tries&&!(ex.last&&ex.last.kind!=='start')?'data-x="rerollNem"':'');
+    const pl=Math.max(2,ex.players),deck=b.tier<=4?NDECK[pl][b.tier-1]:null;
+    const tiers=ex.tiers.slice().sort();
+    h+=`<details class="box" open><summary>Before this battle <span>${ex.players} ${ex.players>1?'players':'player'}</span></summary><div style="padding-bottom:12px;font-size:14px">
+      <p style="margin:4px 0 8px"><b>Mages:</b> each player picks 1 from the Barracks.</p>
+      <p style="margin:0 0 8px"><b>Supply:</b> pick 9 from the Barracks (3 gems, 2 relics, 4 spells) and banish the rest with ✕.</p>
+      <p style="margin:0 0 8px"><b>Treasures:</b> ${tiers.length?tiers.map(t=>TUSE[t]).join('. ')+'.':'none yet.'}</p>
+      ${deck?`<p style="margin:0"><b>Nemesis deck</b> (A basic, V upgraded basic, plus the nemesis's own cards${ex.players===1?'; 2-player counts':''}):</p>
+      <div class="counts" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:8px 0 0"><div><b>${deck[0]}</b>Level 1</div><div><b>${deck[1]}</b>Level 2</div><div><b>${deck[2]}</b>Level 3</div></div>`:''}
+    </div></details>`;
     h+=`<div class="actions"><button class="btn win" data-x="win">Won the battle</button><button class="btn lose" data-x="lose">Lost the battle</button></div>`;
   }
   const L=ex.last;
   if(L&&L.kind==='loss'&&L.choose&&!ex.done){
-    h+=`<div class="reward"><h2>Defeat</h2><p class="lead" style="margin:0 0 10px">Retry the same nemesis. Choose one reward to take into the rematch:</p>
-      <div class="pills" style="justify-content:flex-start">${['Gem','Relic','Spell','Mage','Treasure'].map(t=>`<button class="pill" data-loss="${t}">${t==='Treasure'?'Level 1 treasure':t}</button>`).join('')}</div></div>`;
-  }else if(L&&(L.cards||L.treasures)){
+    const opts=[['Gem','Gem'],['Relic','Relic'],['Spell','Spell'],['Mage','Mage'],...ex.tiers.slice().sort().map(t=>['T'+t,'Tier '+t+' treasure'])];
+    h+=`<div class="reward"><h2>Defeat</h2><p class="lead" style="margin:0 0 10px">Fight the same nemesis again. Choose 1 to add to the Barracks:</p>
+      <div class="pills" style="justify-content:flex-start">${opts.map(([k,l])=>`<button class="pill" data-loss="${k}">${l}</button>`).join('')}</div></div>`;
+  }else if(L&&L.cards){
     const items=[...L.mages.map(id=>mageHTML(id)),...L.cards.map(id=>cardHTML(id)),...L.treasures.map(treHTML)].join('');
-    h+=`<div class="reward"><h2>${L.kind==='win'?'Rewards for battle '+(L.battle+1):'Consolation reward'}</h2>${items?`<div class="list">${items}</div>`:'<p class="lead" style="margin:0">Nothing left to gain from your collection.</p>'}
-      ${L.kind==='win'&&!L.treasures.length&&ex.battles[L.battle].tl?'<p class="hint">No treasures in your collection for this level.</p>':''}</div>`;
+    const title=L.kind==='start'?'Starting rewards (as if battle 1 was won)':L.kind==='win'?'Rewards for battle '+(L.battle+1):'Added to the Barracks';
+    h+=`<div class="reward"><h2>${title}</h2>${items?`<div class="list">${items}</div>`:'<p class="lead" style="margin:0">Nothing left to gain from your collection.</p>'}</div>`;
   }
   const sup=supplySorted(ex.supply);
-  h+=`<details class="box" open><summary>Party mages <span>${ex.mages.length}</span></summary><div class="list">${ex.mages.map(id=>mageHTML(id)).join('')}</div></details>
-  <details class="box"><summary>Supply <span>${sup.length} cards</span></summary><div class="list">${sup.map(c=>cardHTML(c.id)).join('')}</div></details>
+  h+=`<h3>Barracks</h3>
+  <details class="box" open><summary>Mages <span>${ex.mages.length}</span></summary><div class="list">${ex.mages.map(id=>mageHTML(id)).join('')}</div></details>
+  <details class="box"><summary>Supplies <span>${sup.length} cards</span></summary><div class="list">${sup.length?sup.map(supItem).join(''):'<p class="empty" style="margin:4px 0">None left.</p>'}</div></details>
   <details class="box"><summary>Treasures <span>${ex.treasures.length}</span></summary><div class="list">${ex.treasures.length?ex.treasures.slice().sort((a,b)=>(TREI[a]?.level||0)-(TREI[b]?.level||0)).map(treHTML).join(''):'<p class="empty" style="margin:4px 0">None yet.</p>'}</div></details>
   <div class="bar2"><button class="btn" data-x="undo"${R.exHist.length?'':' disabled'}>Undo</button><button class="btn" data-x="abandon">${ex.done?'New expedition':'Abandon'}</button></div>`;
   $('rExp').innerHTML=h;
@@ -503,9 +537,11 @@ function renderExp(){
 let armAb=null;
 $('rExp').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
-  if(b.dataset.party){R.exSet.party=+b.dataset.party;rsave();renderExp();return}
+  if(b.dataset.players){R.exSet.players=+b.dataset.players;rsave();renderExp();return}
   if(b.id==='xStart'){startExp();return}
   if(b.dataset.loss){lossReward(b.dataset.loss);return}
+  if(b.dataset.ban){exSnap();R.ex.supply=R.ex.supply.filter(i=>i!==b.dataset.ban);R.ex.banished.push(b.dataset.ban);rsave();renderExp();
+    const d=document.querySelectorAll('#rExp details.box')[2];if(d)d.open=true;return}
   const x=b.dataset.x;if(!x)return;
   if(x==='win')winBattle();
   if(x==='lose')loseBattle();
@@ -516,13 +552,13 @@ $('rExp').addEventListener('click',e=>{
     b.textContent='Tap again to abandon';armAb=setTimeout(()=>{armAb=null;b.textContent='Abandon'},3000);
   }
 });
-$('rExp').addEventListener('change',e=>{if(e.target.id==='xVar')R.exSet.variant=e.target.value;if(e.target.id==='xSetup')R.exSet.setup=e.target.value;rsave()});
+$('rExp').addEventListener('change',e=>{if(e.target.id==='xVar'){R.exSet.variant=e.target.value;rsave();renderExp()}});
 
 /* ---------- collection ---------- */
 function renderCol(){
   const waves=[...new Set(EXPS.map(e=>e.wave))];
   const cnt=(a)=>a.filter(own).length;
-  let h=`<h2>Your collection</h2><p class="lead" style="margin-top:0">Tick what you own. Rolls only use these.</p>
+  let h=`<h2>Your collection</h2><p class="lead" style="margin-top:0">Tick what you own once. It's saved on this device, and every roll uses only these.</p>
   <div class="counts"><div><b>${cnt(NEM)}</b>Nemeses</div><div><b>${new Set(MAGE.filter(own).map(m=>m.name)).size}</b>Mages</div><div><b>${cnt(CARD)}</b>Cards</div><div><b>${cnt(TRE)}</b>Treasures</div></div>
   <div class="bar2"><button class="btn" data-all="1">Select all</button><button class="btn" data-all="0">Clear</button></div>`;
   for(const w of waves){
