@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Aeon's End">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#14111c">
+<meta name="theme-color" content="#14090c">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Aeon's End</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,7 +55,12 @@ h3{font-size:14px;font-weight:600;color:var(--mute);margin:18px 0 8px}
 .portal .r3{inset:6%;border:2px solid rgba(160,131,255,.35)}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.portal i{animation:none!important}.flip{animation:none!important}}
-.home h1{font-size:34px}
+.home h1{font-size:34px;text-shadow:0 0 22px rgba(255,60,30,.45)}
+.portalcv{width:min(92vw,360px);aspect-ratio:1;height:auto;margin:-30px 0 -40px}
+body.homebg{background:radial-gradient(120% 70% at 50% 28%,#3a0c12 0%,#14090c 60%) fixed,#14090c}
+body.homebg .choice{background:linear-gradient(150deg,rgba(255,70,40,.16),rgba(30,16,22,.92) 65%);border-color:#4a2530}
+body.homebg .choice.alt{background:linear-gradient(150deg,rgba(200,30,40,.28),rgba(30,16,22,.92) 65%)}
+body.homebg #homeCol{border-color:#4a2530}
 .choices{display:grid;gap:12px;width:100%;margin-top:12px}
 .choice{min-height:88px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(150deg,rgba(160,131,255,.22),var(--panel) 65%);cursor:pointer;text-align:left;padding:14px 18px;display:flex;flex-direction:column;justify-content:center}
 .choice b{font:700 21px Cinzel,serif}
@@ -199,7 +204,7 @@ details.box .list{padding-bottom:12px}
 
   <!-- HOME -->
   <section id="vHome" class="home">
-    <div class="portal" aria-hidden="true"><i class="r2"></i><i class="r1"></i><i class="r3"></i><i class="core"></i></div>
+    <canvas id="portalCv" class="portalcv" aria-hidden="true"></canvas>
     <h1>Aeon's End</h1>
     <p class="lead">What do you need?</p>
     <div class="choices">
@@ -269,11 +274,81 @@ const store=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const pick=a=>a.length?a[Math.floor(Math.random()*a.length)]:null;
 
+/* ================= PORTAL ================= */
+function startPortal(cv){
+  const ctx=cv.getContext('2d');
+  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W=0,H=0,R=0,D=1,raf=0,running=false,seed=1;
+  const rnd=Math.random;
+  function size(){D=Math.min(2,window.devicePixelRatio||1);const w=cv.clientWidth||300,h=cv.clientHeight||w;
+    cv.width=Math.round(w*D);cv.height=Math.round(h*D);W=cv.width;H=cv.height;R=Math.min(W,H)*0.29}
+  // swirl streaks
+  const streaks=Array.from({length:240},()=>({r:Math.pow(rnd(),0.7),a:rnd()*Math.PI*2,len:0.5+rnd()*1.1,w:0.6+rnd()*2.4,sp:0.5+rnd()*0.8,b:0.5+rnd()*0.5}));
+  let bolts=[],ring=[],fuzz=[],nextBolt=0,nextRing=0;
+  function jag(cx,cy,ang,len,segs,spread,depth,out){
+    let x=cx,y=cy;const pts=[[x,y]];
+    for(let i=1;i<=segs;i++){const a=ang+(rnd()-.5)*spread;x+=Math.cos(a)*len/segs;y+=Math.sin(a)*len/segs;pts.push([x,y]);
+      if(depth<2&&i>1&&i<segs&&rnd()<0.32)jag(x,y,a+(rnd()<.5?-1:1)*(0.35+rnd()*0.5),len*(0.35+rnd()*0.3),Math.max(3,segs-3),spread*1.1,depth+1,out)}
+    out.push({pts,w:depth?0.55:1});return out}
+  function makeRing(){const n=140,pts=[];for(let s=0;s<3;s++){const arr=[];const off=(rnd()-.5)*0.03;
+      for(let i=0;i<=n;i++){const a=i/n*Math.PI*2;const rr=R*(1+off+(rnd()-.5)*0.045);arr.push([W/2+Math.cos(a)*rr,H/2+Math.sin(a)*rr])}
+      pts.push(arr)}return pts}
+  function makeFuzz(){const out=[];for(let i=0;i<46;i++){const a=rnd()*Math.PI*2,r0=R*(0.97+rnd()*0.06);
+      jag(W/2+Math.cos(a)*r0,H/2+Math.sin(a)*r0,a+(rnd()-.5)*1.2,R*(0.08+rnd()*0.16),4,1.4,2,out)}return out}
+  function spawnBolt(t){const n=1+Math.floor(rnd()*2);for(let k=0;k<n;k++){const a=rnd()*Math.PI*2,r0=R*1.01;
+      bolts.push({born:t,life:180+rnd()*220,segs:jag(W/2+Math.cos(a)*r0,H/2+Math.sin(a)*r0,a+(rnd()-.5)*0.5,R*(0.4+rnd()*0.28),9,1.0,0,[])})}}
+  function stroke(seg,alpha,wMul){const p=seg.pts;ctx.beginPath();ctx.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)ctx.lineTo(p[i][0],p[i][1]);
+    ctx.globalAlpha=alpha*0.55;ctx.strokeStyle='#ff2a14';ctx.lineWidth=4.2*D*seg.w*wMul;ctx.stroke();
+    ctx.globalAlpha=alpha;ctx.strokeStyle='#ffe2cc';ctx.lineWidth=1.1*D*seg.w*wMul;ctx.stroke()}
+  function draw(t){
+    const cx=W/2,cy=H/2;ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.clearRect(0,0,W,H);
+    // outer aura
+    let g=ctx.createRadialGradient(cx,cy,R*0.6,cx,cy,R*1.7);g.addColorStop(0,'rgba(255,40,20,.35)');g.addColorStop(.5,'rgba(180,10,10,.18)');g.addColorStop(1,'rgba(120,0,0,0)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    // vortex body
+    ctx.save();ctx.beginPath();ctx.arc(cx,cy,R*0.985,0,Math.PI*2);ctx.clip();
+    g=ctx.createRadialGradient(cx,cy,0,cx,cy,R);g.addColorStop(0,'#ffe08a');g.addColorStop(.12,'#ffb23a');g.addColorStop(.32,'#e8401a');g.addColorStop(.62,'#7a0a0c');g.addColorStop(1,'#1c0205');
+    ctx.fillStyle=g;ctx.fillRect(cx-R,cy-R,R*2,R*2);
+    ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+    const rot=t*0.00055;
+    for(const s of streaks){const r0=s.r*R*0.98;const a0=s.a-rot*s.sp*(1.5-s.r);
+      ctx.beginPath();for(let k=0;k<=10;k++){const f=k/10;const a=a0+f*s.len*(1.25-s.r*0.6);const rr=r0*(1-f*0.22);const x=cx+Math.cos(a)*rr,y=cy+Math.sin(a)*rr;k?ctx.lineTo(x,y):ctx.moveTo(x,y)}
+      const hue=8+38*(1-s.r),light=28+42*(1-s.r)*s.b;ctx.strokeStyle=`hsla(${hue},100%,${light}%,${0.16+0.22*(1-s.r)})`;ctx.lineWidth=s.w*D*(1.4-s.r*0.6);ctx.stroke()}
+    g=ctx.createRadialGradient(cx,cy,0,cx,cy,R*0.32);g.addColorStop(0,'rgba(255,250,220,.95)');g.addColorStop(.4,'rgba(255,200,90,.5)');g.addColorStop(1,'rgba(255,120,40,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,R*0.32,0,Math.PI*2);ctx.fill();
+    // inner rim shade
+    g=ctx.createRadialGradient(cx,cy,R*0.7,cx,cy,R);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(20,0,0,.55)');
+    ctx.globalCompositeOperation='source-over';ctx.fillStyle=g;ctx.fillRect(cx-R,cy-R,R*2,R*2);
+    ctx.restore();
+    // ring + fuzz + bolts
+    if(t>nextRing){ring=makeRing();fuzz=makeFuzz();nextRing=t+70+rnd()*60}
+    if(t>nextBolt){spawnBolt(t);nextBolt=t+120+rnd()*260}
+    ctx.globalCompositeOperation='lighter';ctx.lineJoin='round';
+    ctx.shadowColor='rgba(255,40,20,.9)';ctx.shadowBlur=14*D;
+    ring.forEach((arr,i)=>{ctx.beginPath();arr.forEach((p,j)=>j?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
+      ctx.globalAlpha=i?0.5:0.9;ctx.strokeStyle='#ff3a1e';ctx.lineWidth=(i?3:6)*D;ctx.stroke();
+      ctx.globalAlpha=i?0.6:1;ctx.strokeStyle='#ffd7b0';ctx.lineWidth=(i?0.9:1.8)*D;ctx.stroke()});
+    ctx.shadowBlur=6*D;
+    fuzz.forEach(sg=>stroke(sg,0.55,0.7));
+    bolts=bolts.filter(b=>t-b.born<b.life);
+    ctx.shadowBlur=10*D;
+    bolts.forEach(b=>{const k=1-(t-b.born)/b.life;const flick=k*(0.75+rnd()*0.25);b.segs.forEach(sg=>stroke(sg,flick,1))});
+    ctx.shadowBlur=0;ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+  }
+  function loop(t){draw(t);if(running)raf=requestAnimationFrame(loop)}
+  size();window.addEventListener('resize',()=>{size();ring=[]});
+  return {start(){if(running)return;size();if(reduce){draw(performance.now());return}running=true;raf=requestAnimationFrame(loop)},
+          stop(){running=false;cancelAnimationFrame(raf)},draw};
+}
+
+let portal=null;
 /* ================= NAV ================= */
 let view='home';
 function go(v){
   view=v;
   $('vHome').classList.toggle('hide',v!=='home');$('shell').classList.toggle('hide',v==='home');
+  document.body.classList.toggle('homebg',v==='home');
+  if(v==='home'){portal=portal||startPortal($('portalCv'));portal.start()}else if(portal)portal.stop();
   $('vTurn').classList.toggle('hide',v!=='turn');$('vRand').classList.toggle('hide',v!=='rand');$('vCol').classList.toggle('hide',v!=='col');
   $('colBtn').classList.toggle('on',v==='col');
   document.querySelectorAll('#mainSeg button').forEach(b=>b.classList.toggle('on',b.dataset.go===v));
